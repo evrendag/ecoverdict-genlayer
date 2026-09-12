@@ -20,10 +20,10 @@ ECOVERDICT is a complete GenLayer application for testing public environmental c
 
 ## Evidence checklist
 
-- Public application: pending
+- Public application: `https://ecoverdict-genlayer.acemidoktor.chatgpt.site`
 - GitHub repository: `https://github.com/evrendag/ecoverdict-genlayer`
-- Contract address: pending
-- Full Consensus transaction: pending
+- Contract address: `0xF1047C26935a0651162b6BF4691f06f2c2905a21`
+- Full Consensus transaction: `https://explorer-studio.genlayer.com/tx/0x3fc34ef90678d4f0a7a735fa0a5bb31c334623573aecee9911940429cb463506`
 - Demo video: pending
 - Eight Direct Mode tests: passed
 - ESLint and production build: passed
