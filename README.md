@@ -24,6 +24,16 @@ sources. The result is one of:
 - `MISLEADING`
 - `INSUFFICIENT_EVIDENCE`
 
+## Live deployment
+
+- App: https://ecoverdict-genlayer.acemidoktor.chatgpt.site
+- StudioNet contract: https://explorer-studio.genlayer.com/address/0xF1047C26935a0651162b6BF4691f06f2c2905a21
+- Full Consensus audit: https://explorer-studio.genlayer.com/tx/0x3fc34ef90678d4f0a7a735fa0a5bb31c334623573aecee9911940429cb463506
+
+Passport `0` finalized as `SUBSTANTIATED` with score `95`, coverage `90`,
+`HIGH` evidence quality, no qualification, zero contradictions and `ACTIVE`
+status after validators independently fetched two current official sources.
+
 ## Complete lifecycle
 
 1. Register the exact public claim, scope, review standard and review window.
@@ -83,4 +93,3 @@ pytest -q
 ECOVERDICT does not certify environmental performance and is not legal advice.
 It produces a transparent consensus assessment of whether submitted live
 evidence supports a precisely scoped public claim.
-
