@@ -29,16 +29,16 @@ type Passport = {
   rationale?: string; validity_days?: number | bigint; status?: string;
 };
 
-const DEFAULT_CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? "";
+const DEFAULT_CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? "0xF1047C26935a0651162b6BF4691f06f2c2905a21";
 const readClient = createClient({ chain: studionet });
-const DEMO_SUBJECT = "Google renewable electricity matching";
-const DEMO_CLAIM = "Google has matched 100% of its annual global electricity consumption with renewable energy purchases since 2017.";
-const DEMO_SCOPE = "Annual market-based electricity matching across global operations; this does not claim carbon-free energy in every hour and location.";
-const DEMO_STANDARD = "Confirm the exact period, operational boundary, annual matching method and any 24/7 limitation from current authoritative sources.";
-const DEMO_NOTE = "The first source is the claim owner's published sustainability material; the second explains the separate 24/7 carbon-free energy objective.";
+const DEMO_SUBJECT = "Google clean energy claim";
+const DEMO_CLAIM = "Google pays for 100% of the electricity used by its data centers and offices, while 24/7 carbon-free energy on every grid remains a future ambition rather than a current achievement.";
+const DEMO_SCOPE = "Global Google data centers and offices; distinguishes annual procurement and payment from hourly location-matched carbon-free operation.";
+const DEMO_STANDARD = "Verify the current wording, operational boundary, procurement method, reporting period and distinction between present annual matching and the 24/7 ambition using live official sources.";
+const DEMO_NOTE = "Google's current official sustainability and data-center pages describe clean-energy procurement, the present electricity-payment boundary, and the separate future 24/7 carbon-free energy ambition.";
 const DEMO_SOURCES = [
-  "https://sustainability.google/operating-sustainably/net-zero-carbon/",
-  "https://www.google.com/about/datacenters/cleanenergy/",
+  "https://sustainability.google/operations/",
+  "https://datacenters.google/operating-sustainably/",
 ];
 const shortAddress = (value: string) => value ? `${value.slice(0, 6)}…${value.slice(-4)}` : "Not connected";
 
