@@ -31,6 +31,10 @@ ECOVERDICT; “%100 yenilenebilir”, “karbon nötr” ve “geri dönüştür
 
 - Web sitesi: `https://ecoverdict-genlayer.acemidoktor.chatgpt.site`
 - GitHub: `https://github.com/evrendag/ecoverdict-genlayer`
-- Sözleşme: StudioNet dağıtımından sonra eklenecek
+- Sözleşme: `https://explorer-studio.genlayer.com/address/0xF1047C26935a0651162b6BF4691f06f2c2905a21`
+- Full Consensus: `https://explorer-studio.genlayer.com/tx/0x3fc34ef90678d4f0a7a735fa0a5bb31c334623573aecee9911940429cb463506`
 - YouTube: Full Consensus kaydı tamamlandıktan sonra eklenecek
 
+## Doğrulanmış canlı sonuç
+
+Google'ın yıllık yenilenebilir enerji eşleştirmesi ile gelecekteki 7/24 karbonsuz enerji hedefini ayıran iddia, iki güncel resmî kaynaktan Full Consensus ile denetlendi. Pasaport 0; `SUBSTANTIATED`, puan `95`, kapsam `90`, kanıt kalitesi `HIGH`, sınırlama `NONE`, çelişki `0`, durum `ACTIVE` olarak kesinleşti.
