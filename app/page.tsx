@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "genlayer-js";
-import { studionet } from "genlayer-js/chains";
+import { studioDevnet } from "genlayer-js/chains";
 import { TransactionStatus } from "genlayer-js/types";
 import { ArrowUpRight, BadgeCheck, CircleAlert, FileSearch, FlaskConical, Leaf, Link2, Loader2, Plus, RefreshCw, Scale, ShieldAlert, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ type Passport = {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const DEFAULT_CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? "0x44961Cd909FD79e71F04A11FD35f698704990cf1";
-const readClient = createClient({ chain: studionet });
+const readClient = createClient({ chain: studioDevnet });
 const DEMO_SUBJECT = "Google clean energy claim";
 const DEMO_CLAIM = "Google pays for 100% of the electricity used by its data centers and offices, while 24/7 carbon-free energy on every grid remains a future ambition rather than a current achievement.";
 const DEMO_SCOPE = "Global Google data centers and offices; distinguishes annual procurement and payment from hourly location-matched carbon-free operation.";
@@ -73,7 +73,7 @@ export default function Home() {
 
   const walletClient = useCallback(() => {
     if (!account || !window.ethereum) throw new Error("Connect a wallet first.");
-    return createClient({ chain: studionet, account: account as `0x${string}`, provider: window.ethereum as never });
+    return createClient({ chain: studioDevnet, account: account as `0x${string}`, provider: window.ethereum as never });
   }, [account]);
 
   async function connectWallet() {
@@ -83,8 +83,8 @@ export default function Home() {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
       const address = accounts[0];
       if (!address) throw new Error("No wallet account was returned.");
-      const client = createClient({ chain: studionet, account: address as `0x${string}`, provider: window.ethereum as never });
-      await client.connect("studionet");
+      const client = createClient({ chain: studioDevnet, account: address as `0x${string}`, provider: window.ethereum as never });
+      await client.connect("studio-dev");
       setAccount(address);
       setMessage("Wallet connected to GenLayer StudioNet.");
     } finally { setBusy(null); }
