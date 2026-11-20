@@ -125,7 +125,10 @@ export default function Home() {
     try {
       const counts = await readClient.readContract({ address: contractAddress as `0x${string}`, functionName: "get_counts", args: [] }) as (number | bigint)[];
       const id = Number(counts[0]);
-      const hash = await walletClient().writeContract({ address: contractAddress as `0x${string}`, functionName: "register_claim", args: [subject.trim(), claimText.trim(), scope.trim(), reviewStandard.trim(), days], value: 0n });
+      const client = walletClient();
+      const request = { address: contractAddress as `0x${string}`, functionName: "register_claim", args: [subject.trim(), claimText.trim(), scope.trim(), reviewStandard.trim(), days], value: 0n };
+      const estimate = await client.estimateTransactionFeesForWrite(request);
+      const hash = await client.writeContract({ ...request, fees: { distribution: estimate.distribution, feeValue: estimate.feeValue } });
       setMessage("Claim registration submitted. Waiting for finalization…");
       await wait(hash); setClaimId(String(id)); setTab("evidence"); await loadClaim(String(id));
       setMessage(`Claim #${id} is registered. Attach its evidence dossier.`);
@@ -139,7 +142,10 @@ export default function Home() {
     try {
       const fingerprint = await hashEvidence(cleanSources, evidenceNote.trim());
       const anchoredNote = `${evidenceNote.trim()}\n\nEvidence content SHA-256: ${fingerprint}`;
-      const hash = await walletClient().writeContract({ address: contractAddress as `0x${string}`, functionName: "set_evidence", args: [Number(claimId), JSON.stringify(cleanSources), anchoredNote], value: 0n });
+      const client = walletClient();
+      const request = { address: contractAddress as `0x${string}`, functionName: "set_evidence", args: [Number(claimId), JSON.stringify(cleanSources), anchoredNote], value: 0n };
+      const estimate = await client.estimateTransactionFeesForWrite(request);
+      const hash = await client.writeContract({ ...request, fees: { distribution: estimate.distribution, feeValue: estimate.feeValue } });
       setMessage("Evidence dossier submitted. Waiting for finalization…");
       await wait(hash); await loadClaim(claimId); setEvidenceFingerprint(fingerprint); setTab("audit");
       setMessage(`Evidence for claim #${claimId} is sealed and anchored (${fingerprint.slice(0, 12)}…).`);
@@ -152,7 +158,10 @@ export default function Home() {
     try {
       const counts = await readClient.readContract({ address: contractAddress as `0x${string}`, functionName: "get_counts", args: [] }) as (number | bigint)[];
       const id = Number(counts[1]);
-      const hash = await walletClient().writeContract({ address: contractAddress as `0x${string}`, functionName: "audit_claim", args: [Number(claimId)], value: 0n });
+      const client = walletClient();
+      const request = { address: contractAddress as `0x${string}`, functionName: "audit_claim", args: [Number(claimId)], value: 0n };
+      const estimate = await client.estimateTransactionFeesForWrite(request);
+      const hash = await client.writeContract({ ...request, fees: { distribution: estimate.distribution, feeValue: estimate.feeValue } });
       setMessage("Validators are fetching every source and comparing the exact wording…");
       await wait(hash); setPassportId(String(id)); await loadPassport(String(id)); await loadClaim(claimId); setTab("passport");
       setMessage("Full Consensus finalized. The Green Claim Passport is onchain.");
@@ -163,7 +172,10 @@ export default function Home() {
     if (challengeText.trim().length < 30 || cleanChallengeSources.length < 1) throw new Error("Add a detailed challenge and at least one HTTPS source.");
     setBusy("challenge");
     try {
-      const hash = await walletClient().writeContract({ address: contractAddress as `0x${string}`, functionName: "open_challenge", args: [Number(claimId), challengeText.trim(), JSON.stringify(cleanChallengeSources)], value: 0n });
+      const client = walletClient();
+      const request = { address: contractAddress as `0x${string}`, functionName: "open_challenge", args: [Number(claimId), challengeText.trim(), JSON.stringify(cleanChallengeSources)], value: 0n };
+      const estimate = await client.estimateTransactionFeesForWrite(request);
+      const hash = await client.writeContract({ ...request, fees: { distribution: estimate.distribution, feeValue: estimate.feeValue } });
       setMessage("Challenge submitted. Waiting for finalization…");
       await wait(hash); await loadClaim(claimId); setTab("audit");
       setMessage("Challenge accepted. Run a new audit to supersede the current passport.");
