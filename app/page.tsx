@@ -29,6 +29,8 @@ type Passport = {
   rationale?: string; validity_days?: number | bigint; status?: string;
 };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const DEFAULT_CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? "0xF1047C26935a0651162b6BF4691f06f2c2905a21";
 const readClient = createClient({ chain: studionet });
 const DEMO_SUBJECT = "Google clean energy claim";
@@ -62,6 +64,7 @@ export default function Home() {
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("Ready to register a public environmental claim.");
   const [txHash, setTxHash] = useState("");
+  const [evidenceFingerprint, setEvidenceFingerprint] = useState("");
 
   const validContract = /^0x[a-fA-F0-9]{40}$/.test(contractAddress) && !/^0x0{40}$/.test(contractAddress);
   const cleanSources = useMemo(() => sources.map((v) => v.trim()).filter(Boolean), [sources]);
@@ -89,6 +92,27 @@ export default function Home() {
   async function wait(hash: `0x${string}`) {
     setTxHash(hash);
     await readClient.waitForTransactionReceipt({ hash, status: TransactionStatus.FINALIZED });
+    // StudioNet can expose the finalized receipt before the state index is readable.
+    // Give the read path a short head start; the getters below also retry.
+    await sleep(750);
+  }
+
+  async function readWithRetry<T>(read: () => Promise<T>, attempts = 8): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try { return await read(); } catch (error) {
+        lastError = error;
+        await sleep(Math.min(1000 + attempt * 750, 4500));
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("The finalized state is not readable yet.");
+  }
+
+  async function hashEvidence(urls: string[], note: string) {
+    const payload = JSON.stringify({ urls, note });
+    const bytes = new TextEncoder().encode(payload);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
   }
 
   async function registerClaim() {
@@ -112,10 +136,12 @@ export default function Home() {
     if (evidenceNote.trim().length < 20) throw new Error("Explain what the evidence is expected to prove.");
     setBusy("evidence");
     try {
-      const hash = await walletClient().writeContract({ address: contractAddress as `0x${string}`, functionName: "set_evidence", args: [Number(claimId), JSON.stringify(cleanSources), evidenceNote.trim()], value: 0n });
+      const fingerprint = await hashEvidence(cleanSources, evidenceNote.trim());
+      const anchoredNote = `${evidenceNote.trim()}\n\nEvidence content SHA-256: ${fingerprint}`;
+      const hash = await walletClient().writeContract({ address: contractAddress as `0x${string}`, functionName: "set_evidence", args: [Number(claimId), JSON.stringify(cleanSources), anchoredNote], value: 0n });
       setMessage("Evidence dossier submitted. Waiting for finalization…");
-      await wait(hash); await loadClaim(claimId); setTab("audit");
-      setMessage(`Evidence for claim #${claimId} is sealed and ready for audit.`);
+      await wait(hash); await loadClaim(claimId); setEvidenceFingerprint(fingerprint); setTab("audit");
+      setMessage(`Evidence for claim #${claimId} is sealed and anchored (${fingerprint.slice(0, 12)}…).`);
     } finally { setBusy(null); }
   }
 
@@ -145,7 +171,7 @@ export default function Home() {
 
   const loadClaim = useCallback(async (target = claimId) => {
     if (!validContract) throw new Error("Enter a deployed contract address.");
-    const value = await readClient.readContract({ address: contractAddress as `0x${string}`, functionName: "get_claim", args: [Number(target)] }) as Claim;
+    const value = await readWithRetry(() => readClient.readContract({ address: contractAddress as `0x${string}`, functionName: "get_claim", args: [Number(target)] }) as Promise<Claim>);
     setClaim(value); setClaimId(String(target)); return value;
   }, [claimId, contractAddress, validContract]);
 
@@ -153,7 +179,7 @@ export default function Home() {
     if (!validContract) throw new Error("Enter a deployed contract address.");
     setBusy("load");
     try {
-      const value = await readClient.readContract({ address: contractAddress as `0x${string}`, functionName: "get_passport", args: [Number(target)] }) as Passport;
+      const value = await readWithRetry(() => readClient.readContract({ address: contractAddress as `0x${string}`, functionName: "get_passport", args: [Number(target)] }) as Promise<Passport>);
       setPassport(value); setPassportId(String(target));
       if (value?.claim_id !== undefined) { setClaimId(String(Number(value.claim_id))); await loadClaim(String(Number(value.claim_id))); }
       setMessage(value?.status === "NOT_FOUND" ? "Passport not found." : "Onchain passport loaded."); return value;
@@ -222,7 +248,7 @@ export default function Home() {
         </section>
 
         <aside className="space-y-6">
-          <section className="overflow-hidden rounded-[30px] border border-white/10 bg-[#13150e]"><div className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(223,255,100,.12),transparent)] p-6 sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-[#9da286]">Green Claim Passport</p><h2 className="mt-1 text-3xl font-semibold">#{passportId}</h2></div><Badge className={`status-${tone}`}>{verdict.replaceAll("_", " ")}</Badge></div></div>{passport ? <div className="space-y-5 p-6 sm:p-7"><div className="grid grid-cols-2 gap-3"><Metric label="Claim" value={`#${Number(passport.claim_id ?? 0)}`}/><Metric label="Version" value={`v${Number(passport.version ?? 0)}`}/><Metric label="Support score" value={`${Number(passport.score ?? 0)} / 100`}/><Metric label="Claim coverage" value={`${Number(passport.coverage ?? 0)}%`}/><Metric label="Evidence" value={passport.evidence_quality || "—"}/><Metric label="Qualification" value={(passport.qualification || "—").replaceAll("_", " ")}/><Metric label="Contradictions" value={String(Number(passport.contradiction_count ?? 0))}/><Metric label="Review window" value={`${Number(passport.validity_days ?? 0)} days`}/></div><div className="rounded-2xl border border-white/10 bg-[#090a07] p-4"><p className="text-xs uppercase tracking-[.13em] text-[#777c65]">Consensus rationale</p><p className="mt-2 leading-7 text-[#e7e9db]">{passport.rationale || "This passport has not been audited yet."}</p></div><div className="flex items-center gap-2 text-sm text-[#9da286]"><BadgeCheck size={16} className={passport.status === "ACTIVE" ? "text-[#dfff64]" : ""}/>Immutable version · {passport.status}</div></div> : <div className="px-6 py-12 text-center"><CircleAlert className="mx-auto text-[#6f745f]"/><p className="mt-3 text-sm leading-6 text-[#979b80]">Complete the audit or load an existing passport.</p></div>}</section>
+          <section className="overflow-hidden rounded-[30px] border border-white/10 bg-[#13150e]"><div className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(223,255,100,.12),transparent)] p-6 sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-[#9da286]">Green Claim Passport</p><h2 className="mt-1 text-3xl font-semibold">#{passportId}</h2></div><Badge className={`status-${tone}`}>{verdict.replaceAll("_", " ")}</Badge></div></div>{passport ? <div className="space-y-5 p-6 sm:p-7"><div className="grid grid-cols-2 gap-3"><Metric label="Claim" value={`#${Number(passport.claim_id ?? 0)}`}/><Metric label="Version" value={`v${Number(passport.version ?? 0)}`}/><Metric label="Support score" value={`${Number(passport.score ?? 0)} / 100`}/><Metric label="Claim coverage" value={`${Number(passport.coverage ?? 0)}%`}/><Metric label="Evidence" value={passport.evidence_quality || "—"}/><Metric label="Qualification" value={(passport.qualification || "—").replaceAll("_", " ")}/><Metric label="Contradictions" value={String(Number(passport.contradiction_count ?? 0))}/><Metric label="Review window" value={`${Number(passport.validity_days ?? 0)} days`}/></div><div className="rounded-2xl border border-[#ffbf69]/25 bg-[#ffbf69]/5 p-4 text-sm leading-6 text-[#ffcf8a]"><ShieldAlert size={16} className="mr-2 inline-block"/>Active passports are valid only for the onchain review window. Re-audit after expiry instead of treating an old result as current.</div><div className="rounded-2xl border border-white/10 bg-[#090a07] p-4"><p className="text-xs uppercase tracking-[.13em] text-[#777c65]">Consensus rationale</p><p className="mt-2 leading-7 text-[#e7e9db]">{passport.rationale || "This passport has not been audited yet."}</p>{evidenceFingerprint && <p className="mt-4 break-all font-mono text-xs text-[#9da286]">Evidence SHA-256: {evidenceFingerprint}</p>}</div><div className="flex items-center gap-2 text-sm text-[#9da286]"><BadgeCheck size={16} className={passport.status === "ACTIVE" ? "text-[#dfff64]" : ""}/>Immutable version · {passport.status}</div></div> : <div className="px-6 py-12 text-center"><CircleAlert className="mx-auto text-[#6f745f]"/><p className="mt-3 text-sm leading-6 text-[#979b80]">Complete the audit or load an existing passport.</p></div>}</section>
 
           <section className="rounded-[24px] border border-white/10 bg-[#11130d] p-6"><p className="text-xs uppercase tracking-[.14em] text-[#777c65]">Protocol status</p><p aria-live="polite" className="mt-2 leading-6 text-[#e4e6d8]">{message}</p>{txHash && <a className="mt-4 inline-flex items-center gap-1.5 text-sm text-[#dfff64] hover:underline" href={`https://explorer-studio.genlayer.com/tx/${txHash}`} target="_blank" rel="noreferrer">Open transaction <ArrowUpRight size={14}/></a>}</section>
           <section className="grid grid-cols-4 gap-2 rounded-[24px] border border-white/10 bg-[#11130d] p-4 text-center"><Step done={!!claim} label="Claim"/><Step done={claim?.status !== "DRAFT" && !!claim} label="Evidence"/><Step done={!!passport} label="Audit"/><Step done={passport?.status === "ACTIVE"} label="Passport"/></section>
