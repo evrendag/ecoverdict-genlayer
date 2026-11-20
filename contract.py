@@ -5,6 +5,7 @@ from genlayer import *
 from dataclasses import dataclass
 import json
 import typing
+import time
 
 
 @allow_storage
@@ -38,6 +39,8 @@ class GreenPassport:
     contradiction_count: u32
     rationale: str
     validity_days: u32
+    issued_at: u64
+    expires_at: u64
     status: str
 
 
@@ -260,7 +263,10 @@ Allowed qualifications: {", ".join(allowed_qualifications)}.
             claim_id, version, result["verdict"], u32(result["score"]),
             u32(result["coverage"]), result["evidence_quality"],
             result["qualification"], u32(result["contradiction_count"]),
-            result["rationale"], claim.validity_days, "ACTIVE",
+            result["rationale"], claim.validity_days,
+            u64(int(time.time())),
+            u64(int(time.time()) + int(claim.validity_days) * 86400),
+            "ACTIVE",
         )
         self.next_passport_id += u32(1)
         claim.audit_count = version
@@ -289,7 +295,7 @@ Allowed qualifications: {", ".join(allowed_qualifications)}.
         return self.passports.get(
             passport_id,
             GreenPassport(u32(0), u32(0), "", u32(0), u32(0), "", "",
-                          u32(0), "", u32(0), "NOT_FOUND"),
+                          u32(0), "", u32(0), u64(0), u64(0), "NOT_FOUND"),
         )
 
     @gl.public.view
@@ -300,7 +306,18 @@ Allowed qualifications: {", ".join(allowed_qualifications)}.
         if claim.audit_count == u32(0):
             return False
         passport = self.passports[claim.latest_passport_id]
-        return passport.status == "ACTIVE" and passport.verdict == "SUBSTANTIATED"
+        return (
+            passport.status == "ACTIVE"
+            and passport.verdict == "SUBSTANTIATED"
+            and int(time.time()) <= int(passport.expires_at)
+        )
+
+    @gl.public.view
+    def is_passport_expired(self, passport_id: u32) -> bool:
+        if passport_id >= self.next_passport_id:
+            return True
+        passport = self.passports[passport_id]
+        return int(time.time()) > int(passport.expires_at)
 
     @gl.public.view
     def get_counts(self) -> DynArray[u32]:
