@@ -84,7 +84,7 @@ export default function Home() {
       const address = accounts[0];
       if (!address) throw new Error("No wallet account was returned.");
       const client = createClient({ chain: studioDevnet, account: address as `0x${string}`, provider: window.ethereum as never });
-      await client.connect("studio-dev");
+      await client.connect("studioDevnet");
       setAccount(address);
       setMessage("Wallet connected to GenLayer StudioNet.");
     } finally { setBusy(null); }
