@@ -27,11 +27,12 @@ type Passport = {
   score?: number | bigint; coverage?: number | bigint; evidence_quality?: string;
   qualification?: string; contradiction_count?: number | bigint;
   rationale?: string; validity_days?: number | bigint; status?: string;
+  issued_at?: number | bigint; expires_at?: number | bigint;
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const DEFAULT_CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? "0xF1047C26935a0651162b6BF4691f06f2c2905a21";
+const DEFAULT_CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? "0x44961Cd909FD79e71F04A11FD35f698704990cf1";
 const readClient = createClient({ chain: studionet });
 const DEMO_SUBJECT = "Google clean energy claim";
 const DEMO_CLAIM = "Google pays for 100% of the electricity used by its data centers and offices, while 24/7 carbon-free energy on every grid remains a future ambition rather than a current achievement.";
@@ -180,9 +181,10 @@ export default function Home() {
     setBusy("load");
     try {
       const value = await readWithRetry(() => readClient.readContract({ address: contractAddress as `0x${string}`, functionName: "get_passport", args: [Number(target)] }) as Promise<Passport>);
-      setPassport(value); setPassportId(String(target));
+      const expired = value?.status === "ACTIVE" && value?.expires_at !== undefined && Math.floor(Date.now() / 1000) > Number(value.expires_at);
+      setPassport(expired ? { ...value, status: "EXPIRED" } : value); setPassportId(String(target));
       if (value?.claim_id !== undefined) { setClaimId(String(Number(value.claim_id))); await loadClaim(String(Number(value.claim_id))); }
-      setMessage(value?.status === "NOT_FOUND" ? "Passport not found." : "Onchain passport loaded."); return value;
+      setMessage(value?.status === "NOT_FOUND" ? "Passport not found." : expired ? "Onchain passport loaded; its review window has expired." : "Onchain passport loaded."); return value;
     } finally { setBusy(null); }
   }, [passportId, contractAddress, loadClaim, validContract]);
 
